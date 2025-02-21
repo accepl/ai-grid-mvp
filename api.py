@@ -1,103 +1,116 @@
-from flask import Flask, request, jsonify
-import pandas as pd
-import numpy as np
-from sklearn.ensemble import RandomForestRegressor
+import os
 import joblib
+import pandas as pd
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
+# Initialize Flask application
 app = Flask(__name__)
+CORS(app)
 
-MODEL_PATH_GRID = "models/rf_grid_model.pkl"
-MODEL_PATH_BESS = "models/rf_bess_model.pkl"
+# Define model paths
+MODEL_PATH_GRID = 'models/rf_grid_model.pkl'
+MODEL_PATH_BESS = 'models/rf_bess_model.pkl'
 
-# Load models (or train if they don't exist)
-def load_or_train_models():
-    try:
-        global rf_model_grid, rf_model_bess
-        rf_model_grid = joblib.load(MODEL_PATH_GRID)
-        rf_model_bess = joblib.load(MODEL_PATH_BESS)
-        print("Models loaded successfully")
-    except (FileNotFoundError, IOError):
-        print("Models not found. Training new models...")
-        train_models()
-
-def train_models():
-    # Example grid data for training
-    grid_data = pd.DataFrame({
-        "previous_demand": [1500, 1550, 1600, 1580, 1550, 1530],
-        "weather_conditions": [32, 30, 28, 31, 33, 29],
-        "time_of_day": [16, 14, 18, 15, 12, 13],
-        "day_of_week": [3, 4, 5, 6, 0, 1],
-        "special_event": [0, 0, 1, 0, 1, 0],
-        "economic_index": [5.0, 5.1, 5.0, 4.8, 5.2, 5.1],
-        "season": [1, 2, 1, 2, 1, 1]  # Winter = 1, Summer = 2, etc.
-    })
-
-    bess_data = grid_data.copy()  # Use the same data for BESS as an example
-
-    X_grid = grid_data.drop("previous_demand", axis=1)  # Features
-    y_grid = grid_data["previous_demand"]  # Target
-
-    X_bess = bess_data.drop("previous_demand", axis=1)
-    y_bess = bess_data["previous_demand"]
-
+# Load the models
+def load_models():
     global rf_model_grid, rf_model_bess
-    rf_model_grid = RandomForestRegressor(n_estimators=100)
-    rf_model_grid.fit(X_grid, y_grid)
+    if os.path.exists(MODEL_PATH_GRID):
+        rf_model_grid = joblib.load(MODEL_PATH_GRID)
+        print("Grid model loaded successfully.")
+    else:
+        print(f"Grid model not found at {MODEL_PATH_GRID}. Please train the model first.")
+    
+    if os.path.exists(MODEL_PATH_BESS):
+        rf_model_bess = joblib.load(MODEL_PATH_BESS)
+        print("BESS model loaded successfully.")
+    else:
+        print(f"BESS model not found at {MODEL_PATH_BESS}. Please train the model first.")
 
-    rf_model_bess = RandomForestRegressor(n_estimators=100)
-    rf_model_bess.fit(X_bess, y_bess)
+# Load models when the app starts
+load_models()
 
-    # Save models
+# Define prediction route for Grid
+@app.route('/predict/grid', methods=['POST'])
+def predict_grid():
+    try:
+        data = request.get_json()
+
+        # Ensure the data has the correct format
+        expected_keys = ['previous_demand', 'weather_conditions', 'time_of_day', 'day_of_week', 'special_event', 'economic_index', 'season']
+        if not all(key in data for key in expected_keys):
+            return jsonify({"error": "Missing required input parameters"}), 400
+
+        # Convert input data into a dataframe
+        input_data = pd.DataFrame([data])
+        
+        # Prediction using the loaded grid model
+        prediction = rf_model_grid.predict(input_data)
+        
+        return jsonify({"predicted_demand": prediction[0]})
+    
+    except Exception as e:
+        return jsonify({"error": f"Error during grid prediction: {str(e)}"}), 500
+
+# Define prediction route for BESS
+@app.route('/predict/bess', methods=['POST'])
+def predict_bess():
+    try:
+        data = request.get_json()
+
+        # Ensure the data has the correct format
+        expected_keys = ['previous_demand', 'weather_conditions', 'time_of_day', 'day_of_week', 'special_event', 'economic_index', 'season']
+        if not all(key in data for key in expected_keys):
+            return jsonify({"error": "Missing required input parameters"}), 400
+
+        # Convert input data into a dataframe
+        input_data = pd.DataFrame([data])
+        
+        # Prediction using the loaded BESS model
+        prediction = rf_model_bess.predict(input_data)
+        
+        return jsonify({"predicted_storage": prediction[0]})
+    
+    except Exception as e:
+        return jsonify({"error": f"Error during BESS prediction: {str(e)}"}), 500
+
+# Train models if they are not found
+def train_models():
+    # Example training code (using dummy data)
+    grid_data = pd.DataFrame({
+        'previous_demand': [1500, 1550, 1600, 1580, 1550, 1530],
+        'weather_conditions': [32, 30, 28, 31, 33],
+        'time_of_day': [16, 16, 17, 16, 18],
+        'day_of_week': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+        'special_event': ['No', 'No', 'Yes', 'No', 'No'],
+        'economic_index': [5, 6, 4, 5, 3],
+        'season': ['Winter', 'Winter', 'Winter', 'Winter', 'Winter']
+    })
+    
+    bess_data = pd.DataFrame({
+        'previous_demand': [1500, 1550, 1600, 1580, 1550, 1530],
+        'weather_conditions': [32, 30, 28, 31, 33],
+        'time_of_day': [16, 16, 17, 16, 18],
+        'day_of_week': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+        'special_event': ['No', 'No', 'Yes', 'No', 'No'],
+        'economic_index': [5, 6, 4, 5, 3],
+        'season': ['Winter', 'Winter', 'Winter', 'Winter', 'Winter']
+    })
+    
+    # Dummy model training (you should replace it with your actual model training code)
+    from sklearn.ensemble import RandomForestRegressor
+    rf_model_grid = RandomForestRegressor()
+    rf_model_bess = RandomForestRegressor()
+    
+    rf_model_grid.fit(grid_data, [1500, 1550, 1600, 1580, 1550])
+    rf_model_bess.fit(bess_data, [500, 520, 530, 510, 500])
+    
+    # Save models after training
     joblib.dump(rf_model_grid, MODEL_PATH_GRID)
     joblib.dump(rf_model_bess, MODEL_PATH_BESS)
 
-# Preprocess the input data
-def preprocess_input(data):
-    # Convert time_of_day to numeric value (if it's not already)
-    data["time_of_day"] = int(data["time_of_day"][0])  # assuming a single hour is passed
-
-    # Convert day_of_week to numeric value
-    data["day_of_week"] = int(data["day_of_week"][0])  # assuming it's an integer
-
-    # Convert special_event to binary (0 for No, 1 for Yes)
-    data["special_event"] = int(data["special_event"][0])
-
-    # Convert economic_index to numeric value (percentage)
-    data["economic_index"] = float(data["economic_index"][0])
-
-    # Convert season to numeric value (e.g., Winter = 1, Summer = 2)
-    data["season"] = int(data["season"][0])
-
-    return data
-
-@app.route('/predict/grid', methods=['POST'])
-def predict_grid():
-    data = request.get_json()
-
-    # Preprocess input data
-    data = preprocess_input(data)
-
-    # Convert to DataFrame for model input
-    input_data = pd.DataFrame([data])
-
-    # Make prediction with the grid model
-    prediction = rf_model_grid.predict(input_data)
-    return jsonify({"predicted_demand": prediction[0]})
-
-@app.route('/predict/bess', methods=['POST'])
-def predict_bess():
-    data = request.get_json()
-
-    # Preprocess input data
-    data = preprocess_input(data)
-
-    # Convert to DataFrame for model input
-    input_data = pd.DataFrame([data])
-
-    # Make prediction with the BESS model
-    prediction = rf_model_bess.predict(input_data)
-    return jsonify({"predicted_bess_demand": prediction[0]})
+# Uncomment to train models on first startup (if models don't exist)
+# train_models()
 
 if __name__ == '__main__':
-    load_or_train_models()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True)
