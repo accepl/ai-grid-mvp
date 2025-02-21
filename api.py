@@ -21,13 +21,8 @@ MODEL_PATH_BESS = 'models/rf_bess_model.pkl'
 rf_model_grid = None
 rf_model_bess = None
 
-# Helper function to validate input data format
-def validate_input_data(data, expected_keys):
-    """
-    Validates if the incoming JSON data contains the required keys.
-    Returns True if valid, False if any key is missing.
-    """
-    return all(key in data for key in expected_keys)
+# Label Encoder (used for encoding categorical variables)
+label_encoder = LabelEncoder()
 
 # Load the models if they exist
 def load_models():
@@ -73,8 +68,7 @@ def train_and_save_models():
         'season': ['Winter', 'Winter', 'Winter', 'Winter', 'Winter']
     })
     
-    # Preprocessing: Convert categorical data into numeric data
-    label_encoder = LabelEncoder()
+    # Preprocessing: Convert categorical data into numeric data using label encoding
     grid_data['day_of_week'] = label_encoder.fit_transform(grid_data['day_of_week'])
     grid_data['special_event'] = label_encoder.fit_transform(grid_data['special_event'])
     grid_data['season'] = label_encoder.fit_transform(grid_data['season'])
@@ -113,13 +107,13 @@ def predict_grid():
 
         # Ensure the data contains the required fields
         expected_keys = ['previous_demand', 'weather_conditions', 'time_of_day', 'day_of_week', 'special_event', 'economic_index', 'season']
-        if not validate_input_data(data, expected_keys):
+        if not all(key in data for key in expected_keys):
             return jsonify({"error": "Missing required input parameters"}), 400
         
         # Convert the input data into a DataFrame for prediction
         input_data = pd.DataFrame([data])
 
-        # Apply same transformations (Label encoding) on the input data
+        # Apply label encoding on the input data
         input_data['day_of_week'] = label_encoder.transform(input_data['day_of_week'])
         input_data['special_event'] = label_encoder.transform(input_data['special_event'])
         input_data['season'] = label_encoder.transform(input_data['season'])
@@ -144,13 +138,13 @@ def predict_bess():
 
         # Ensure the data contains the required fields
         expected_keys = ['previous_demand', 'weather_conditions', 'time_of_day', 'day_of_week', 'special_event', 'economic_index', 'season']
-        if not validate_input_data(data, expected_keys):
+        if not all(key in data for key in expected_keys):
             return jsonify({"error": "Missing required input parameters"}), 400
         
         # Convert the input data into a DataFrame for prediction
         input_data = pd.DataFrame([data])
 
-        # Apply same transformations (Label encoding) on the input data
+        # Apply label encoding on the input data
         input_data['day_of_week'] = label_encoder.transform(input_data['day_of_week'])
         input_data['special_event'] = label_encoder.transform(input_data['special_event'])
         input_data['season'] = label_encoder.transform(input_data['season'])
@@ -168,3 +162,4 @@ if __name__ == '__main__':
     # Ensuring the app uses the correct port when deployed on Render.com
     port = int(os.getenv('PORT', 5000))
     app.run(debug=True, host='0.0.0.0', port=port)
+
