@@ -4,6 +4,7 @@ import pandas as pd
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import LabelEncoder
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -69,6 +70,16 @@ def train_and_save_models():
         'season': ['Winter', 'Winter', 'Winter', 'Winter', 'Winter']
     })
     
+    # Preprocessing: Convert categorical data into numeric data
+    label_encoder = LabelEncoder()
+    grid_data['day_of_week'] = label_encoder.fit_transform(grid_data['day_of_week'])
+    grid_data['special_event'] = label_encoder.fit_transform(grid_data['special_event'])
+    grid_data['season'] = label_encoder.fit_transform(grid_data['season'])
+
+    bess_data['day_of_week'] = label_encoder.fit_transform(bess_data['day_of_week'])
+    bess_data['special_event'] = label_encoder.fit_transform(bess_data['special_event'])
+    bess_data['season'] = label_encoder.fit_transform(bess_data['season'])
+
     # Define and train models
     global rf_model_grid, rf_model_bess
     rf_model_grid = RandomForestRegressor()
@@ -105,6 +116,11 @@ def predict_grid():
         # Convert the input data into a DataFrame for prediction
         input_data = pd.DataFrame([data])
 
+        # Apply same transformations (Label encoding) on the input data
+        input_data['day_of_week'] = label_encoder.transform(input_data['day_of_week'])
+        input_data['special_event'] = label_encoder.transform(input_data['special_event'])
+        input_data['season'] = label_encoder.transform(input_data['season'])
+
         # Prediction using the loaded grid model
         prediction = rf_model_grid.predict(input_data.drop('previous_demand', axis=1))
 
@@ -130,6 +146,11 @@ def predict_bess():
         
         # Convert the input data into a DataFrame for prediction
         input_data = pd.DataFrame([data])
+
+        # Apply same transformations (Label encoding) on the input data
+        input_data['day_of_week'] = label_encoder.transform(input_data['day_of_week'])
+        input_data['special_event'] = label_encoder.transform(input_data['special_event'])
+        input_data['season'] = label_encoder.transform(input_data['season'])
 
         # Prediction using the loaded BESS model
         prediction = rf_model_bess.predict(input_data.drop('previous_demand', axis=1))
