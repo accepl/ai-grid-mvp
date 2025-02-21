@@ -2,68 +2,48 @@ from flask import Flask, request, jsonify
 import pickle
 import pandas as pd
 import numpy as np
-import os
-import redis
-import logging
 from sqlalchemy import create_engine
 import train_model
 
 app = Flask(__name__)
-
-# Database Setup
-DATABASE_URL = "sqlite:///grid_predictions.db"
+DATABASE_URL = "sqlite:///predictions.db"
 engine = create_engine(DATABASE_URL)
 
-# Redis Setup for Caching
-redis_client = redis.Redis(host="localhost", port=6379, db=0)
-
-# Logging Setup
-logging.basicConfig(filename="api_logs.log", level=logging.INFO,
-                    format="%(asctime)s - %(levelname)s - %(message)s")
-
-# Load trained model
-def load_model():
-    with open("grid_model.pkl", "rb") as file:
+# Load models
+def load_model(filename):
+    with open(filename, "rb") as file:
         return pickle.load(file)
 
 @app.route("/predict", methods=["GET"])
 def predict():
-    model = load_model()
+    model = load_model("grid_model.pkl")
     hours = int(request.args.get("hours", 1))
-
-    # Check Redis Cache First
-    cache_key = f"prediction_{hours}"
-    cached_result = redis_client.get(cache_key)
-    
-    if cached_result:
-        logging.info(f"Cache hit for {cache_key}")
-        return jsonify({"predictions": eval(cached_result.decode("utf-8"))})
-
-    # Compute Prediction
     future_timestamps = np.arange(100, 100 + hours).reshape(-1, 1)
-    predictions = model.predict(future_timestamps).tolist()
+    predictions = model.predict(future_timestamps)
+    return jsonify({"predictions": predictions.tolist()})
 
-    # Store in Redis with TTL (Expires in 60 seconds)
-    redis_client.setex(cache_key, 60, str(predictions))
+@app.route("/battery_predict", methods=["GET"])
+def battery_predict():
+    model = load_model("battery_model.pkl")
+    demand = float(request.args.get("demand", 1000))
+    charge = float(request.args.get("charge", 50))
+    prediction = model.predict(np.array([[demand, charge]]))[0]
+    return jsonify({"predicted_discharge": round(prediction, 2)})
 
-    logging.info(f"Cache miss - computed predictions for {cache_key}")
-    return jsonify({"predictions": predictions})
+@app.route("/failure_predict", methods=["GET"])
+def failure_predict():
+    model = load_model("failure_model.pkl")
+    temperature = float(request.args.get("temperature", 50))
+    vibration = float(request.args.get("vibration", 5))
+    prediction = model.predict(np.array([[temperature, vibration]]))[0]
+    return jsonify({"failure_risk": "High" if prediction == -1 else "Low"})
 
 @app.route("/retrain", methods=["POST"])
 def retrain():
-    try:
-        train_model.train_model()
-        redis_client.flushdb()  # Clear cache after retraining
-        logging.info("Model retrained successfully")
-        return jsonify({"message": "Model retrained successfully"})
-    except Exception as e:
-        logging.error(f"Error retraining model: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/history", methods=["GET"])
-def history():
-    df = pd.read_sql("SELECT * FROM predictions", con=engine)
-    return df.to_json(orient="records")
+    train_model.train_grid_model()
+    train_model.train_battery_model()
+    train_model.train_failure_model()
+    return jsonify({"message": "Models retrained successfully"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
