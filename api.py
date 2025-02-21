@@ -2,12 +2,18 @@ from flask import Flask, request, jsonify
 from sklearn.ensemble import RandomForestRegressor
 import numpy as np
 import os
+import joblib
 
 app = Flask(__name__)
 
-# Model paths (For future use, replace with actual model paths when ready)
+# Model paths
 MODEL_PATH_GRID = 'models/rf_grid_model.pkl'
 MODEL_PATH_BESS = 'models/rf_bess_model.pkl'
+
+# Ensure the models directory exists
+def ensure_model_directory():
+    if not os.path.exists('models'):
+        os.makedirs('models')
 
 # Check if models exist, if not, train them
 def check_or_train_models():
@@ -16,7 +22,7 @@ def check_or_train_models():
     # If models are not already trained or not found, create and train them
     if not os.path.exists(MODEL_PATH_GRID) or not os.path.exists(MODEL_PATH_BESS):
         print("Training models...")
-        
+
         # Create dummy data for training
         X_train = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
         y_train_grid = np.array([100, 200, 300])  # Dummy target for grid
@@ -25,24 +31,23 @@ def check_or_train_models():
         # Initialize and train models
         rf_model_grid = RandomForestRegressor()
         rf_model_bess = RandomForestRegressor()
-        
+
         rf_model_grid.fit(X_train, y_train_grid)
         rf_model_bess.fit(X_train, y_train_bess)
 
         # Save the models (for future use)
-        import joblib
         joblib.dump(rf_model_grid, MODEL_PATH_GRID)
         joblib.dump(rf_model_bess, MODEL_PATH_BESS)
 
         print("Models trained and saved.")
     else:
         # Load pre-trained models
-        import joblib
         rf_model_grid = joblib.load(MODEL_PATH_GRID)
         rf_model_bess = joblib.load(MODEL_PATH_BESS)
         print("Models loaded from disk.")
 
 # Run the model training/loading check
+ensure_model_directory()  # Ensure the model directory exists before loading/saving models
 check_or_train_models()
 
 # Health check route
