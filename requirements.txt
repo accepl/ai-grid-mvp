@@ -1,6 +1,10 @@
-fastapi
-uvicorn
+flask
 pandas
-numpy
 scikit-learn
-joblib
+requests
+sqlalchemy
+sqlite3
+celery
+redis
+streamlit
+gunicorn
