@@ -1,8 +1,17 @@
+# Web Frameworks
 flask
-pandas
-scikit-learn
-requests
-sqlalchemy
-sqlite3
-streamlit
 gunicorn
+
+# Data Processing
+pandas
+numpy
+sqlalchemy
+
+# Machine Learning
+scikit-learn
+
+# API Requests
+requests
+
+# UI & Visualization
+streamlit
