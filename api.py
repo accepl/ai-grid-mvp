@@ -1,20 +1,25 @@
 from fastapi import FastAPI
 import uvicorn
 import numpy as np
-import joblib
-from pydantic import BaseModel
-
-# Load trained model
 import os
+import joblib
 import pandas as pd
-import numpy as np
+from pydantic import BaseModel
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
-import joblib
+
+app = FastAPI()
+
+# Define request model
+class PredictionRequest(BaseModel):
+    temperature: float
+    day_of_week: int
+    holiday: int
 
 # Function to train model if not found
 def train_and_save_model():
-    timestamps = pd.date_range(start="2024-01-01", periods=24*365, freq='H')
+    print("Training new model...")
+    timestamps = pd.date_range(start="2024-01-01", periods=24*365, freq='h')
     base_demand = 500 + 100 * np.sin(np.linspace(0, 12 * np.pi, len(timestamps)))
     random_fluctuation = np.random.normal(0, 50, len(timestamps))
     power_demand = base_demand + random_fluctuation
@@ -38,6 +43,7 @@ def train_and_save_model():
     model.fit(X_train, y_train)
 
     joblib.dump(model, "rf_power_demand_model.pkl")
+    print("Model trained and saved!")
 
 # Check if model exists, if not, train it
 if not os.path.exists("rf_power_demand_model.pkl"):
@@ -45,22 +51,16 @@ if not os.path.exists("rf_power_demand_model.pkl"):
 
 rf_model = joblib.load("rf_power_demand_model.pkl")
 
-# Initialize FastAPI app
-app = FastAPI()
+@app.get("/")
+def home():
+    return {"message": "AI Grid Load Balancing API is live!"}
 
-# Define request model
-class PredictionRequest(BaseModel):
-    temperature: float
-    day_of_week: int
-    holiday: int
-
-# API endpoint for power demand prediction
 @app.post("/predict/")
 def predict_power_demand(request: PredictionRequest):
     input_data = np.array([[request.temperature, request.day_of_week, request.holiday]])
     prediction = rf_model.predict(input_data)[0]
     return {"predicted_power_demand_mw": prediction}
 
-# Run FastAPI server
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
