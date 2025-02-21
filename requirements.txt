@@ -8,3 +8,5 @@ celery
 redis
 streamlit
 gunicorn
+flask-caching
+flask-logging
