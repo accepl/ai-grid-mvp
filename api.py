@@ -18,26 +18,27 @@ if not os.path.exists('models'):
 
 # Function to train models with more detailed features
 def train_models():
-    # Example training data (replace with actual data)
+    # Example training data (ensure arrays have the same length)
     grid_data = pd.DataFrame({
         'previous_demand': [1500, 1550, 1600, 1580, 1550, 1530],
-        'weather_conditions': [32, 30, 28, 31, 33],
-        'time_of_day': [16, 17, 18, 19, 20],
-        'day_of_week': [1, 2, 3, 4, 5],  # 1 = Monday, 7 = Sunday
-        'special_event': [0, 0, 1, 0, 0],  # 0 = No, 1 = Yes
-        'economic_index': [5, 4.8, 5.1, 4.9, 5],
-        'season': [1, 1, 2, 2, 3],  # 1 = Winter, 2 = Spring, 3 = Summer
-        'target': [100, 105, 110, 108, 107]
+        'weather_conditions': [32, 30, 28, 31, 33, 32],
+        'time_of_day': [16, 17, 18, 19, 20, 21],
+        'day_of_week': [1, 2, 3, 4, 5, 6],  # 1 = Monday, 7 = Sunday
+        'special_event': [0, 0, 1, 0, 0, 1],  # 0 = No, 1 = Yes
+        'economic_index': [5, 4.8, 5.1, 4.9, 5, 4.7],
+        'season': [1, 1, 2, 2, 3, 3],  # 1 = Winter, 2 = Spring, 3 = Summer
+        'target': [100, 105, 110, 108, 107, 112]
     })
+
     bess_data = pd.DataFrame({
         'previous_demand': [1500, 1550, 1600, 1580, 1550, 1530],
-        'weather_conditions': [32, 30, 28, 31, 33],
-        'time_of_day': [16, 17, 18, 19, 20],
-        'day_of_week': [1, 2, 3, 4, 5],
-        'special_event': [0, 0, 1, 0, 0],
-        'economic_index': [5, 4.8, 5.1, 4.9, 5],
-        'season': [1, 1, 2, 2, 3],
-        'target': [100, 105, 110, 108, 107]
+        'weather_conditions': [32, 30, 28, 31, 33, 32],
+        'time_of_day': [16, 17, 18, 19, 20, 21],
+        'day_of_week': [1, 2, 3, 4, 5, 6],
+        'special_event': [0, 0, 1, 0, 0, 1],
+        'economic_index': [5, 4.8, 5.1, 4.9, 5, 4.7],
+        'season': [1, 1, 2, 2, 3, 3],
+        'target': [100, 105, 110, 108, 107, 112]
     })
 
     # Features and Target for Grid and BESS models
