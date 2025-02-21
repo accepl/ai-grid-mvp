@@ -1,19 +1,8 @@
-# Web Frameworks
 flask
-flask-cors
-
-gunicorn
-
-# Data Processing
-pandas
+flask_cors
+joblib
 numpy
-sqlalchemy
+pandas
+gunicorn
+uvicorn
 
-# Machine Learning
-scikit-learn
-
-# API Requests
-requests
-
-# UI & Visualization
-streamlit
