@@ -52,30 +52,21 @@ def train_and_save_models():
         'previous_demand': [1500, 1550, 1600, 1580, 1550],
         'weather_conditions': [32, 30, 28, 31, 33],
         'time_of_day': [16, 16, 17, 16, 18],
-        'day_of_week': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
         'special_event': ['No', 'No', 'Yes', 'No', 'No'],
-        'economic_index': [5, 6, 4, 5, 3],
-        'season': ['Winter', 'Winter', 'Winter', 'Winter', 'Winter']
+        'economic_index': [5, 6, 4, 5, 3]
     })
 
     bess_data = pd.DataFrame({
         'previous_demand': [1500, 1550, 1600, 1580, 1550],
         'weather_conditions': [32, 30, 28, 31, 33],
         'time_of_day': [16, 16, 17, 16, 18],
-        'day_of_week': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
         'special_event': ['No', 'No', 'Yes', 'No', 'No'],
-        'economic_index': [5, 6, 4, 5, 3],
-        'season': ['Winter', 'Winter', 'Winter', 'Winter', 'Winter']
+        'economic_index': [5, 6, 4, 5, 3]
     })
     
     # Preprocessing: Convert categorical data into numeric data using label encoding
-    grid_data['day_of_week'] = label_encoder.fit_transform(grid_data['day_of_week'])
     grid_data['special_event'] = label_encoder.fit_transform(grid_data['special_event'])
-    grid_data['season'] = label_encoder.fit_transform(grid_data['season'])
-
-    bess_data['day_of_week'] = label_encoder.fit_transform(bess_data['day_of_week'])
     bess_data['special_event'] = label_encoder.fit_transform(bess_data['special_event'])
-    bess_data['season'] = label_encoder.fit_transform(bess_data['season'])
 
     # Define and train models
     global rf_model_grid, rf_model_bess
@@ -106,7 +97,7 @@ def predict_grid():
         data = request.get_json()
 
         # Ensure the data contains the required fields
-        expected_keys = ['previous_demand', 'weather_conditions', 'time_of_day', 'day_of_week', 'special_event', 'economic_index', 'season']
+        expected_keys = ['previous_demand', 'weather_conditions', 'time_of_day', 'special_event', 'economic_index']
         if not all(key in data for key in expected_keys):
             return jsonify({"error": "Missing required input parameters"}), 400
         
@@ -114,9 +105,7 @@ def predict_grid():
         input_data = pd.DataFrame([data])
 
         # Apply label encoding on the input data
-        input_data['day_of_week'] = label_encoder.transform(input_data['day_of_week'])
         input_data['special_event'] = label_encoder.transform(input_data['special_event'])
-        input_data['season'] = label_encoder.transform(input_data['season'])
 
         # Prediction using the loaded grid model
         prediction = rf_model_grid.predict(input_data.drop('previous_demand', axis=1))
@@ -137,7 +126,7 @@ def predict_bess():
         data = request.get_json()
 
         # Ensure the data contains the required fields
-        expected_keys = ['previous_demand', 'weather_conditions', 'time_of_day', 'day_of_week', 'special_event', 'economic_index', 'season']
+        expected_keys = ['previous_demand', 'weather_conditions', 'time_of_day', 'special_event', 'economic_index']
         if not all(key in data for key in expected_keys):
             return jsonify({"error": "Missing required input parameters"}), 400
         
@@ -145,9 +134,7 @@ def predict_bess():
         input_data = pd.DataFrame([data])
 
         # Apply label encoding on the input data
-        input_data['day_of_week'] = label_encoder.transform(input_data['day_of_week'])
         input_data['special_event'] = label_encoder.transform(input_data['special_event'])
-        input_data['season'] = label_encoder.transform(input_data['season'])
 
         # Prediction using the loaded BESS model
         prediction = rf_model_bess.predict(input_data.drop('previous_demand', axis=1))
@@ -162,4 +149,3 @@ if __name__ == '__main__':
     # Ensuring the app uses the correct port when deployed on Render.com
     port = int(os.getenv('PORT', 5000))
     app.run(debug=True, host='0.0.0.0', port=port)
-
