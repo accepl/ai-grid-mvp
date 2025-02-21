@@ -4,9 +4,5 @@ scikit-learn
 requests
 sqlalchemy
 sqlite3
-celery
-redis
 streamlit
 gunicorn
-flask-caching
-flask-logging
