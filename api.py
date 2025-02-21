@@ -4,6 +4,40 @@ import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from werkzeug.exceptions import BadRequest, InternalServerError
+from flask import Flask, jsonify, request
+import joblib
+import numpy as np
+
+app = Flask(__name__)
+
+# Load the model if available
+try:
+    rf_model = joblib.load("rf_power_demand_model.pkl")
+except FileNotFoundError:
+    rf_model = None  # Handle the case where the model is not found
+
+@app.route('/')
+def home():
+    return "API is live!"
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    if not rf_model:
+        return jsonify({"error": "Model not loaded"}), 500
+    
+    # Get the data from the request
+    data = request.get_json(force=True)
+    
+    # Here, handle your input and prediction logic
+    try:
+        input_data = np.array(data['input'])  # Modify this based on how you send data
+        prediction = rf_model.predict(input_data.reshape(1, -1))  # Example for RF model
+        return jsonify({"prediction": prediction.tolist()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+if __name__ == "__main__":
+    app.run(debug=True)
 
 # Initialize Flask app and enable CORS
 app = Flask(__name__)
