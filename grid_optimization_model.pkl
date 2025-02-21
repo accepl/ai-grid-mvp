@@ -1,0 +1,18 @@
+# grid_optimization_model.py
+from sklearn.ensemble import RandomForestRegressor
+import joblib
+import numpy as np
+import pandas as pd
+
+# Example: Load your training data (replace with actual dataset)
+# X_train: features, y_train: target variable (e.g., power distribution)
+X_train = pd.DataFrame(np.random.rand(100, 8))  # Example feature data (like grid conditions, load demand, etc.)
+y_train = np.random.rand(100)  # Example target data (like power distribution values)
+
+# Train a RandomForest model for grid optimization
+grid_model = RandomForestRegressor(n_estimators=100)
+grid_model.fit(X_train, y_train)
+
+# Save the model as a .pkl file
+joblib.dump(grid_model, 'grid_optimization_model.pkl')
+print("Grid Optimization Model has been saved as 'grid_optimization_model.pkl'")
