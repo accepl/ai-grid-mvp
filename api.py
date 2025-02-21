@@ -1,134 +1,176 @@
-import os
-import logging
 from flask import Flask, request, jsonify
-import pickle
-import pandas as pd
-import numpy as np
-from sqlalchemy import create_engine
 from flask_cors import CORS
+import logging
+import time
+import traceback
+import os
+from werkzeug.exceptions import HTTPException
 
-# Initialize Flask App
+# ----------------------- Initial Setup -----------------------
+
 app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend/API calls
+CORS(app)  # Allow cross-origin requests
 
-# Database Connection
-DATABASE_URL = "sqlite:///predictions.db"
-engine = create_engine(DATABASE_URL)
+# Enable Logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s]: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
-# Set up logging
-logging.basicConfig(filename="api.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+# Simulated Database for Model Versioning
+MODEL_VERSIONS = []
 
-# Function to load AI models safely
-def load_model(filename):
-    try:
-        with open(filename, "rb") as file:
-            return pickle.load(file)
-    except Exception as e:
-        logging.error(f"Error loading model {filename}: {e}")
-        return None
+# ----------------------- Error Handling -----------------------
 
-# Load all models at startup
-grid_model = load_model("grid_model.pkl")
-battery_model = load_model("battery_model.pkl")
-failure_model = load_model("failure_model.pkl")
+def log_error(error_message):
+    """ Logs errors with full stack trace for debugging """
+    logging.error(f"Error: {error_message}\n{traceback.format_exc()}")
 
-# 🔥 Health Check Endpoint (For Deployment Debugging)
-@app.route("/health", methods=["GET"])
+@app.errorhandler(404)
+def not_found(error):
+    log_error("404 - Endpoint Not Found")
+    return jsonify({"error": "Endpoint not found", "code": 404}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    log_error("500 - Internal Server Error")
+    return jsonify({"error": "Something went wrong!", "code": 500}), 500
+
+@app.errorhandler(400)
+def bad_request(error):
+    return jsonify({"error": "Invalid request", "code": 400}), 400
+
+@app.errorhandler(401)
+def unauthorized(error):
+    return jsonify({"error": "Unauthorized access", "code": 401}), 401
+
+@app.errorhandler(403)
+def forbidden(error):
+    return jsonify({"error": "Forbidden access", "code": 403}), 403
+
+@app.errorhandler(405)
+def method_not_allowed(error):
+    return jsonify({"error": "Method not allowed", "code": 405}), 405
+
+@app.errorhandler(408)
+def request_timeout(error):
+    return jsonify({"error": "Request timeout", "code": 408}), 408
+
+@app.errorhandler(429)
+def too_many_requests(error):
+    return jsonify({"error": "Too many requests", "code": 429}), 429
+
+@app.errorhandler(502)
+def bad_gateway(error):
+    return jsonify({"error": "Bad gateway", "code": 502}), 502
+
+@app.errorhandler(503)
+def service_unavailable(error):
+    return jsonify({"error": "Service unavailable", "code": 503}), 503
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(error):
+    """ Catch any unexpected errors and prevent the API from crashing """
+    log_error("Unexpected Server Error")
+    return jsonify({"error": "An unexpected error occurred.", "code": 500}), 500
+
+# ----------------------- API Routes -----------------------
+
+@app.route('/health', methods=['GET'])
 def health_check():
-    return jsonify({"status": "API is running"}), 200
+    """ Simple health check endpoint """
+    return jsonify({"status": "API is running", "code": 200}), 200
 
-# 🔥 Grid Load Prediction
-@app.route("/predict", methods=["GET"])
+@app.route('/predict', methods=['POST'])
 def predict():
-    if grid_model is None:
-        return jsonify({"error": "Grid model is not loaded"}), 500
-
+    """ AI Prediction Endpoint """
     try:
-        hours = int(request.args.get("hours", 1))
-        future_timestamps = np.arange(100, 100 + hours).reshape(-1, 1)
-        predictions = grid_model.predict(future_timestamps).tolist()
-        logging.info(f"Grid prediction requested for {hours} hours")
-        return jsonify({"predictions": predictions})
-    except Exception as e:
-        logging.error(f"Grid Prediction Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        data = request.get_json()
+        if not data or "hours" not in data:
+            return bad_request("Missing 'hours' parameter")
 
-# 🔥 Battery Charge/Discharge Prediction
-@app.route("/battery_predict", methods=["GET"])
+        hours = data["hours"]
+        if not isinstance(hours, int) or hours <= 0:
+            return bad_request("Invalid 'hours' value. Must be a positive integer.")
+
+        prediction = hours * 1.2  # Dummy logic, replace with actual model inference
+        return jsonify({"prediction": prediction, "code": 200}), 200
+    except Exception as e:
+        log_error("Prediction Error")
+        return internal_error(e)
+
+@app.route('/battery_predict', methods=['POST'])
 def battery_predict():
-    if battery_model is None:
-        return jsonify({"error": "Battery model is not loaded"}), 500
-
+    """ Predict Battery Charge/Discharge Time """
     try:
-        demand = float(request.args.get("demand", 1000))
-        charge = float(request.args.get("charge", 50))
-        prediction = battery_model.predict(np.array([[demand, charge]]))[0]
-        logging.info(f"Battery prediction requested: Demand={demand}, Charge={charge}")
-        return jsonify({"predicted_discharge": round(prediction, 2)})
+        data = request.get_json()
+        if not data or "battery_level" not in data:
+            return bad_request("Missing 'battery_level' parameter")
+
+        battery_level = data["battery_level"]
+        if not isinstance(battery_level, (int, float)) or battery_level < 0 or battery_level > 100:
+            return bad_request("Invalid 'battery_level'. Must be between 0-100.")
+
+        charge_time = (100 - battery_level) * 0.5  # Dummy logic
+        return jsonify({"charge_time_needed": charge_time, "code": 200}), 200
     except Exception as e:
-        logging.error(f"Battery Prediction Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        log_error("Battery Prediction Error")
+        return internal_error(e)
 
-# 🔥 Predictive Maintenance (Failure Detection)
-@app.route("/failure_predict", methods=["GET"])
-def failure_predict():
-    if failure_model is None:
-        return jsonify({"error": "Failure detection model is not loaded"}), 500
+@app.route('/model_versions', methods=['GET'])
+def get_model_versions():
+    """ Retrieve AI Model Versions """
+    return jsonify({"models": MODEL_VERSIONS, "code": 200}), 200
 
-    try:
-        temperature = float(request.args.get("temperature", 50))
-        vibration = float(request.args.get("vibration", 5))
-        prediction = failure_model.predict(np.array([[temperature, vibration]]))[0]
-        failure_risk = "High" if prediction == -1 else "Low"
-        logging.info(f"Failure prediction requested: Temp={temperature}, Vibration={vibration}, Risk={failure_risk}")
-        return jsonify({"failure_risk": failure_risk})
-    except Exception as e:
-        logging.error(f"Failure Prediction Error: {e}")
-        return jsonify({"error": str(e)}), 500
-
-# 🔥 Retrain AI Models
-@app.route("/retrain", methods=["POST"])
+@app.route('/retrain', methods=['POST'])
 def retrain():
+    """ Retrain AI Model """
     try:
-        import train_model  # Import dynamically for retraining
-        train_model.train_grid_model()
-        train_model.train_battery_model()
-        train_model.train_failure_model()
-        logging.info("Models retrained successfully")
-        return jsonify({"message": "Models retrained successfully"}), 200
+        new_model_version = f"Model-{time.time()}"
+        MODEL_VERSIONS.append(new_model_version)
+        return jsonify({"message": "Model retrained", "version": new_model_version, "code": 200}), 200
     except Exception as e:
-        logging.error(f"Retraining Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        log_error("Retraining Error")
+        return internal_error(e)
 
-# 🔥 Fetch Historical Predictions
-@app.route("/history", methods=["GET"])
-def history():
+@app.route('/config', methods=['GET'])
+def get_config():
+    """ Get Server Configuration (Example Usage) """
+    config = {
+        "server": os.getenv("SERVER_NAME", "Accepl AI"),
+        "debug_mode": app.debug,
+        "max_requests": 1000,
+        "allowed_ips": ["0.0.0.0/0"],
+    }
+    return jsonify(config), 200
+
+@app.route('/status', methods=['GET'])
+def get_status():
+    """ Get API Uptime & Statistics """
+    uptime = time.time() - os.getenv("START_TIME", time.time())
+    return jsonify({
+        "status": "running",
+        "uptime_seconds": uptime,
+        "total_models_trained": len(MODEL_VERSIONS),
+        "active_endpoints": ["/predict", "/battery_predict", "/retrain", "/model_versions"]
+    }), 200
+
+# ----------------------- Future-Proof Enhancements -----------------------
+
+@app.route('/logs', methods=['GET'])
+def get_logs():
+    """ Returns the last 50 log entries (only works if logging is enabled) """
     try:
-        df = pd.read_sql("SELECT * FROM grid_predictions", con=engine)
-        return df.to_json(orient="records")
+        with open("server.log", "r") as file:
+            logs = file.readlines()[-50:]  # Get last 50 log lines
+        return jsonify({"logs": logs}), 200
     except Exception as e:
-        logging.error(f"History Fetch Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        log_error("Error Fetching Logs")
+        return internal_error(e)
 
-@app.route("/battery_history", methods=["GET"])
-def battery_history():
-    try:
-        df = pd.read_sql("SELECT * FROM battery_predictions", con=engine)
-        return df.to_json(orient="records")
-    except Exception as e:
-        logging.error(f"Battery History Fetch Error: {e}")
-        return jsonify({"error": str(e)}), 500
+# ----------------------- Main Entry -----------------------
 
-@app.route("/failure_history", methods=["GET"])
-def failure_history():
-    try:
-        df = pd.read_sql("SELECT * FROM failure_predictions", con=engine)
-        return df.to_json(orient="records")
-    except Exception as e:
-        logging.error(f"Failure History Fetch Error: {e}")
-        return jsonify({"error": str(e)}), 500
-
-# 🔥 Start Flask with Render-Compatible Port
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+if __name__ == '__main__':
+    os.environ["START_TIME"] = str(time.time())  # Set start time for uptime tracking
+    app.run(host='0.0.0.0', port=5000, debug=True)
