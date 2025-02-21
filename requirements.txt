@@ -1,8 +1,10 @@
-flask
-flask_cors
-joblib
-numpy
-pandas
-gunicorn
-uvicorn
+flask==3.1.0
+flask_cors==5.0.0
+joblib==1.4.2
+numpy==2.2.3
+pandas==2.2.3
+gunicorn==23.0.0
+uvicorn==0.34.0
+werkzeug==3.1.3
+
 
