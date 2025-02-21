@@ -50,7 +50,7 @@ def train_and_save_models():
     """
     # Example dummy data for grid and BESS
     grid_data = pd.DataFrame({
-        'previous_demand': [1500, 1550, 1600, 1580, 1550, 1530],
+        'previous_demand': [1500, 1550, 1600, 1580, 1550],
         'weather_conditions': [32, 30, 28, 31, 33],
         'time_of_day': [16, 16, 17, 16, 18],
         'day_of_week': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
@@ -60,7 +60,7 @@ def train_and_save_models():
     })
 
     bess_data = pd.DataFrame({
-        'previous_demand': [1500, 1550, 1600, 1580, 1550, 1530],
+        'previous_demand': [1500, 1550, 1600, 1580, 1550],
         'weather_conditions': [32, 30, 28, 31, 33],
         'time_of_day': [16, 16, 17, 16, 18],
         'day_of_week': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
