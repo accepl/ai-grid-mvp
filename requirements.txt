@@ -1,5 +1,7 @@
 # Web Frameworks
 flask
+flask-cors
+
 gunicorn
 
 # Data Processing
